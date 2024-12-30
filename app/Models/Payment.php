@@ -12,8 +12,8 @@ class Payment extends Model
         'tenant_id',
         'room_id',
         'bill_id',
-        'payment_type',
         'amount_paid',
+        'payment_category',
         'payment_date',
     ];
 

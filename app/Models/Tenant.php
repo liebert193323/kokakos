@@ -27,4 +27,8 @@ class Tenant extends Model
     {
         return $this->hasMany(Bill::class);
     }
+    public function room()
+    {
+        return $this->belongsTo(Room::class);
+    }
 }

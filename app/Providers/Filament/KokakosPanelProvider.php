@@ -17,6 +17,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Filament\Resources\PaymentResource;
 
 class KokakosPanelProvider extends PanelProvider
 {
@@ -26,6 +27,9 @@ class KokakosPanelProvider extends PanelProvider
             ->default()
             ->id('kokakos')
             ->path('kokakos')
+            ->resources([
+                PaymentResource::class,
+            ])
             ->login()
             ->colors([
                 'primary' => Color::Amber,
