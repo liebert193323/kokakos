@@ -1,14 +1,15 @@
 <?php
+
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\BillResource\Pages;
 use App\Models\Bill;
+use App\Models\Payment;
 use App\Models\Tenant;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Log;
 
 class BillResource extends Resource
 {
@@ -27,24 +28,11 @@ class BillResource extends Resource
                         if ($state) {
                             $tenant = Tenant::find($state);
                             if ($tenant) {
-                                Log::info('Tenant Selected:', [
-                                    'id' => $tenant->id,
-                                    'name' => $tenant->name,
-                                    'per_month' => $tenant->per_month,
-                                    'price_semester' => $tenant->price_per_semester,
-                                    'price_year' => $tenant->price_per_year
-                                ]);
-
                                 $amount = $tenant->per_month ? 
                                     $tenant->price_per_semester : 
                                     $tenant->price_per_year;
 
                                 $payment_category = $tenant->per_month ? 'semester' : 'year';
-                                
-                                Log::info('Setting values:', [
-                                    'amount' => $amount,
-                                    'payment_category' => $payment_category
-                                ]);
 
                                 $set('amount', $amount);
                                 $set('payment_category', $payment_category);
@@ -120,9 +108,35 @@ class BillResource extends Resource
                     ->dateTime()
                     ->sortable(),
             ])
-            ->filters([])
             ->actions([
                 Tables\Actions\EditAction::make(),
+
+                Tables\Actions\Action::make('pay')
+                    ->label('Bayar')
+                    ->action(function (Bill $record) {
+                        // Validasi data sebelum membuat pembayaran
+                        if (!$record->tenant_id || !$record->amount) {
+                            throw new \Exception('Tenant atau jumlah pembayaran tidak valid.');
+                        }
+
+                        // Buat pembayaran baru di tabel payments
+                        Payment::create([
+                            'tenant_id' => $record->tenant_id,
+                            'room_id' => $record->room_id, // Pastikan room_id diisi jika diperlukan
+                            'bill_id' => $record->id,      // Simpan ID Bill
+                            'amount_paid' => $record->amount,
+                            'payment_type' => $record->payment_category,
+                            'payment_date' => now(),
+                        ]);
+
+                        // Perbarui status tagihan menjadi "Sudah Dibayar"
+                        $record->update(['status' => 'paid']);
+                    })
+                    ->color('success')
+                    ->icon('heroicon-o-check-circle')
+                    ->requiresConfirmation()
+                    ->modalHeading('Konfirmasi Pembayaran')
+                    ->modalSubheading('Apakah Anda yakin ingin menandai tagihan ini sebagai "Sudah Dibayar"?'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

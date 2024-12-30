@@ -9,9 +9,6 @@ use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-
 
 class RoomResource extends Resource
 {
@@ -21,33 +18,56 @@ class RoomResource extends Resource
     protected static ?string $pluralModelLabel = 'Kamar';
     protected static ?string $navigationLabel = 'Kamar';
 
+    /**
+     * Form untuk Create/Edit Room.
+     */
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('tenant_id')
-                    ->label('Penyewa')
-                    ->options(Tenant::all()->pluck('name', 'id'))
-                    ->required()
-                    ->reactive()
-                    ->afterStateUpdated(function (callable $set, $state) {
-                        $tenant = Tenant::find($state);
-                        if ($tenant) {
-                            $set('price_per_semester', $tenant->price_per_semester);
-                            $set('price_per_year', $tenant->price_per_year);
-                            $set('payment_category', $tenant->per_month == 1 ? 'semester' : 'year');
-                        }
-                    }),
-
+                // Field Nomor Kamar (hanya muncul saat create)
                 Forms\Components\TextInput::make('number')
                     ->label('Nomor Kamar')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->visible(fn ($context) => $context === 'create'),
+
+                // Field lainnya hanya muncul saat edit
+                Forms\Components\Select::make('tenant_id')
+                    ->label('Penyewa')
+                    ->options(Tenant::all()->pluck('name', 'id'))
+                    ->nullable()
+                    ->reactive()
+                    ->visible(fn ($context) => $context === 'edit')
+                    ->afterStateUpdated(function (callable $set, $state) {
+                        $tenant = Tenant::find($state);
+                        if ($tenant) {
+                            $startDate = now();
+                            $endDate = $tenant->per_month == 1
+                                ? $startDate->copy()->addMonths(6)
+                                : $startDate->copy()->addYear();
+
+                            $set('payment_category', $tenant->per_month == 1 ? 'semester' : 'year');
+                            $set('price_per_semester', $tenant->price_per_semester);
+                            $set('price_per_year', $tenant->price_per_year);
+                            $set('rent_start_date', $startDate->toDateString());
+                            $set('rent_end_date', $endDate->toDateString());
+                            $set('status', 'occupied');
+                        } else {
+                            $set('payment_category', null);
+                            $set('price_per_semester', null);
+                            $set('price_per_year', null);
+                            $set('rent_start_date', null);
+                            $set('rent_end_date', null);
+                            $set('status', 'available');
+                        }
+                    }),
 
                 Forms\Components\TextInput::make('capacity')
                     ->label('Kapasitas')
                     ->numeric()
-                    ->required(),
+                    ->required()
+                    ->visible(fn ($context) => $context === 'edit'),
 
                 Forms\Components\Select::make('status')
                     ->label('Status')
@@ -55,107 +75,143 @@ class RoomResource extends Resource
                         'available' => 'Tersedia',
                         'occupied' => 'Terisi',
                     ])
-                    ->required()
-                    ->default('available'),
+                    ->default('available')
+                    ->disabled()
+                    ->visible(fn ($context) => $context === 'edit'),
 
                 Forms\Components\Select::make('payment_category')
                     ->label('Kategori Pembayaran')
                     ->options([
-                        'semester' => 'Perbulan',
-                        'year' => 'Pertaun',
+                        'semester' => 'Per Semester',
+                        'year' => 'Per Tahun',
                     ])
-                    ->required()
-                    ->reactive()
-                    ->afterStateUpdated(function (callable $set, $state) {
-                        if ($state === 'semester') {
-                            $set('price_per_semester', 2000000);
-                            $set('price_per_year', 0);
-                        } else {
-                            $set('price_per_semester', 0);
-                            $set('price_per_year', 8000000);
-                        }
-                    }),
+                    ->disabled()
+                    ->visible(fn ($context) => $context === 'edit'),
 
                 Forms\Components\TextInput::make('price_per_semester')
-                    ->label('Harga per Bulan')
+                    ->label('Harga per Semester')
                     ->numeric()
-                    ->required()
-                    ->disabled(),
+                    ->disabled()
+                    ->visible(fn ($context) => $context === 'edit'),
 
                 Forms\Components\TextInput::make('price_per_year')
                     ->label('Harga per Tahun')
                     ->numeric()
-                    ->required()
-                    ->disabled(),
+                    ->disabled()
+                    ->visible(fn ($context) => $context === 'edit'),
+
+                Forms\Components\DatePicker::make('rent_start_date')
+                    ->label('Tanggal Mulai Sewa')
+                    ->disabled()
+                    ->visible(fn ($context) => $context === 'edit'),
+
+                Forms\Components\DatePicker::make('rent_end_date')
+                    ->label('Tanggal Berakhir Sewa')
+                    ->disabled()
+                    ->visible(fn ($context) => $context === 'edit'),
             ]);
     }
 
+    /**
+     * Tabel untuk menampilkan daftar Room.
+     */
     public static function table(Table $table): Table
     {
         return $table
-            ->defaultSort('created_at', 'desc')
-            ->contentGrid([
-                'md' => 2,
-                'lg' => 3,
-                'xl' => 4,
-            ])
+            ->defaultSort('status', 'desc') // Menampilkan kamar "occupied" di atas
+            ->defaultGroup('status') // Grup berdasarkan status
             ->columns([
-                Tables\Columns\Layout\Grid::make([
-                    'default' => 3,
-                    'sm' => 3,
-                    'md' => 4,
-                    'lg' => 6,
-                    'xl' => 8,
-                ])
-                ->schema([
-                    Tables\Columns\TextColumn::make('number')
-                        ->label('')
-                        ->formatStateUsing(function ($state, $record) {
-                            $statusColor = $record->status === 'available' ? 'bg-green-100' : 'bg-red-100';
-                            $textColor = $record->status === 'available' ? 'text-green-800' : 'text-red-800';
-                            $price = $record->payment_category === 'semester' 
-                                ? number_format($record->price_per_semester, 0, ',', '.') 
-                                : number_format($record->price_per_year, 0, ',', '.');
-                            
-                            return view('components.room-card', [
-                                'number' => $state,
-                                'statusColor' => $statusColor,
-                                'textColor' => $textColor,
-                                'status' => $record->status === 'available' ? 'Tersedia' : 'Terisi',
-                                'price' => $price,
-                                'payment_category' => $record->payment_category === 'semester' ? '/bulan' : '/tahun'
-                            ]);
-                        })
-                        ->html(),
-                ]),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
+                Tables\Columns\TextColumn::make('number')
+                    ->label('Nomor Kamar')
+                    ->sortable()
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('tenant.name')
+                    ->label('Penyewa')
+                    ->sortable()
+                    ->default('-'),
+
+                Tables\Columns\TextColumn::make('capacity')
+                    ->label('Kapasitas')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('status')
                     ->label('Status')
-                    ->options([
-                        'available' => 'Tersedia',
-                        'occupied' => 'Terisi',
-                    ]),
-                Tables\Filters\SelectFilter::make('payment_category')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'available' => 'success',
+                        'occupied' => 'danger',
+                        default => 'warning',
+                    }),
+
+                Tables\Columns\TextColumn::make('payment_category')
                     ->label('Kategori Pembayaran')
-                    ->options([
-                        'semester' => 'Perbulan',
-                        'year' => 'Pertaun',
-                    ]),
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'semester' => 'Per Semester',
+                        'year' => 'Per Tahun',
+                        default => '-',
+                    }),
+
+                Tables\Columns\TextColumn::make('rent_start_date')
+                    ->label('Tanggal Mulai')
+                    ->date('d/m/Y'),
+
+                Tables\Columns\TextColumn::make('rent_end_date')
+                    ->label('Tanggal Berakhir')
+                    ->date('d/m/Y'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
-                    ->label('Edit')
-                    ->iconButton(),
-                Tables\Actions\DeleteAction::make()
-                    ->label('Hapus')
-                    ->iconButton(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->label('Hapus yang dipilih'),
-                ]),
+                    ->label('Edit'),
+
+                Tables\Actions\Action::make('add_tenant')
+                    ->label('Tambah Penghuni')
+                    ->visible(fn (Room $record) => $record->status === 'available') // Hanya muncul jika status available
+                    ->form(fn (Room $record) => [
+                        Forms\Components\Select::make('tenant_id')
+                            ->label('Penyewa')
+                            ->options(Tenant::all()->pluck('name', 'id'))
+                            ->required(),
+
+                        Forms\Components\TextInput::make('capacity')
+                            ->label('Kapasitas')
+                            ->default($record->capacity)
+                            ->disabled(),
+
+                        Forms\Components\Select::make('payment_category')
+                            ->label('Kategori Pembayaran')
+                            ->options([
+                                'semester' => 'Per Semester',
+                                'year' => 'Per Tahun',
+                            ])
+                            ->disabled(),
+
+                        Forms\Components\DatePicker::make('rent_start_date')
+                            ->label('Tanggal Mulai Sewa')
+                            ->disabled(),
+
+                        Forms\Components\DatePicker::make('rent_end_date')
+                            ->label('Tanggal Berakhir Sewa')
+                            ->disabled(),
+                    ])
+                    ->action(function (Room $record, array $data) {
+                        $tenant = Tenant::find($data['tenant_id']);
+                        if ($tenant) {
+                            $startDate = now();
+                            $endDate = $tenant->per_month == 1
+                                ? $startDate->copy()->addMonths(6)
+                                : $startDate->copy()->addYear();
+
+                            $record->update([
+                                'tenant_id' => $tenant->id,
+                                'status' => 'occupied',
+                                'payment_category' => $tenant->per_month == 1 ? 'semester' : 'year',
+                                'rent_start_date' => $startDate->toDateString(),
+                                'rent_end_date' => $endDate->toDateString(),
+                            ]);
+                        }
+                    })
+                    ->color('primary'),
             ]);
     }
 
@@ -165,25 +221,6 @@ class RoomResource extends Resource
             'index' => Pages\ListRooms::route('/'),
             'create' => Pages\CreateRoom::route('/create'),
             'edit' => Pages\EditRoom::route('/{record}/edit'),
-            
         ];
     }
-
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::count();
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return static::getModel()::count() > 10 ? 'warning' : 'primary';
-    }
-    
 }

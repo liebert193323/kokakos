@@ -1,10 +1,9 @@
 <?php
+
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\PaymentResource\Pages;
 use App\Models\Payment;
-use App\Models\Tenant;
-use App\Models\Room;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -20,21 +19,38 @@ class PaymentResource extends Resource
     {
         return $table
             ->columns([
-            Tables\Columns\TextColumn::make('tenant.name')->label('Tenant'),  // Menampilkan nama tenant
-            Tables\Columns\TextColumn::make('room.name')->label('Room'),  // Menampilkan nama room
-            Tables\Columns\TextColumn::make('bill.name')->label('Bill'),  // Menampilkan nama bill
-            Tables\Columns\TextColumn::make('amount_paid')->label('Amount')->money('IDR'),
-            Tables\Columns\TextColumn::make('payment_type')->label('Payment Type'),
-            Tables\Columns\TextColumn::make('status')->label('Status'),
-            Tables\Columns\TextColumn::make('created_at')->label('Created At')->dateTime(),
+                Tables\Columns\TextColumn::make('tenant.name')
+                    ->label('Tenant')
+                    ->sortable()
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('bill.description')
+                    ->label('Bill')
+                    ->sortable()
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('amount_paid')
+                    ->label('Amount Paid')
+                    ->money('IDR')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('payment_type')
+                    ->label('Payment Type')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('payment_date')
+                    ->label('Payment Date')
+                    ->dateTime()
+                    ->sortable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('status')->options([
-                    'pending' => 'Pending',
-                    'paid' => 'Paid',
-                ]),
+                Tables\Filters\SelectFilter::make('payment_type')
+                    ->options([
+                        'semester' => 'Per Semester',
+                        'year' => 'Per Tahun',
+                    ]),
             ]);
-    }    
+    }
 
     public static function getPages(): array
     {

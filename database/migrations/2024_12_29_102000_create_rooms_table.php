@@ -10,14 +10,15 @@ return new class extends Migration
     {
         Schema::create('rooms', function (Blueprint $table) {
             $table->id();
-            $table->string('name');  // Keep this for backward compatibility
-            $table->string('number')->nullable();  // Add this for the new room number
             $table->foreignId('tenant_id')->nullable()->constrained()->nullOnDelete();
-            $table->integer('capacity')->default(1);
-            $table->enum('status', ['available', 'occupied'])->default('available');
-            $table->enum('payment_category', ['semester', 'year'])->default('semester');
-            $table->decimal('price_per_semester', 12, 2)->default(0);
-            $table->decimal('price_per_year', 12, 2)->default(0);
+            $table->string('number')->default('No Room'); // Tambahkan default value
+            $table->integer('capacity')->default(1); // Tambahkan default capacity
+            $table->enum('status', ['available', 'occupied', 'archived'])->default('available');
+            $table->enum('payment_category', ['semester', 'year'])->nullable();
+            $table->decimal('price_per_semester', 10, 2)->default(0);
+            $table->decimal('price_per_year', 10, 2)->default(0);
+            $table->date('rent_start_date')->nullable();
+            $table->date('rent_end_date')->nullable();
             $table->timestamps();
         });
     }
