@@ -11,6 +11,9 @@ use Filament\Tables\Table;
 class TenantResource extends Resource
 {
     protected static ?string $model = Tenant::class;
+    protected static ?string $navigationGroup = 'Master';
+    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    
 
     public static function form(Forms\Form $form): Forms\Form
     {

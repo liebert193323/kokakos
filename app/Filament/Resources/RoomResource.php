@@ -22,6 +22,7 @@ class RoomResource extends Resource
     protected static ?string $modelLabel = 'Kamar';
     protected static ?string $pluralModelLabel = 'Kamar';
     protected static ?string $navigationLabel = 'Kamar';
+    protected static ?string $navigationGroup = 'Master';
 
     public static function form(Forms\Form $form): Forms\Form
     {

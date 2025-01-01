@@ -19,6 +19,7 @@ class BillResource extends Resource
     protected static ?string $navigationLabel = 'Tagihan';
     protected static ?string $pluralLabel = 'Tagihan';
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static ?string $navigationGroup = 'Keuangan';
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -145,42 +146,44 @@ class BillResource extends Resource
                 Tables\Actions\EditAction::make(),
                 
                 Tables\Actions\Action::make('pay')
-                    ->label('Bayar')
-                    ->action(function (Bill $record) {
-                        try {
-                            // Cek status terlebih dahulu
-                            if ($record->status === 'paid') {
-                                throw new \Exception('Tagihan ini sudah dibayar.');
-                            }
+    ->label('Bayar')
+    ->action(function (Bill $record) {
+        try {
+            if ($record->status === 'paid') {
+                throw new \Exception('Tagihan ini sudah dibayar.');
+            }
 
-                            // Buat payment record
-                            Payment::create([
-                                'tenant_id' => $record->tenant_id,
-                                'room_id' => $record->room_id,
-                                'bill_id' => $record->id,
-                                'amount' => $record->amount,
-                                'payment_type' => $record->payment_category,
-                                'payment_date' => now(),
-                            ]);
+            // Buat payment record
+            Payment::create([
+                'tenant_id' => $record->tenant_id,
+                'room_id' => $record->room_id,
+                'bill_id' => $record->id,
+                'amount' => $record->amount,
+                'payment_type' => $record->payment_category,
+                'payment_date' => now(),
+            ]);
 
-                            // Update status bill menjadi paid
-                            $record->update(['status' => 'paid']);
+            // Update status bill
+            $record->update(['status' => 'paid']);
 
-                            Notification::make()
-                                ->title('Pembayaran Berhasil')
-                                ->success()
-                                ->send();
+            // Kurangi badge counter setelah pembayaran berhasil
+            cache()->forget('payment_count');
 
-                        } catch (\Exception $e) {
-                            Notification::make()
-                                ->title('Pembayaran Gagal')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
+            Notification::make()
+                ->title('Pembayaran Berhasil')
+                ->success()
+                ->send();
 
-                            throw $e;
-                        }
-                    })
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Pembayaran Gagal')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+
+            throw $e;
+        }
+    })
                     ->color('success')
                     ->icon('heroicon-o-check-circle')
                     ->requiresConfirmation()

@@ -12,7 +12,7 @@ class Payment extends Model
         'tenant_id',
         'room_id',
         'bill_id',
-        'amount_paid',
+        'amount',
         'payment_category',
         'payment_date',
     ];

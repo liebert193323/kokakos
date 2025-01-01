@@ -36,14 +36,14 @@ class PaymentResource extends Resource
                     ->required()
                     ->disabled(),
 
-                Forms\Components\TextInput::make('amount_paid')
+                Forms\Components\TextInput::make('amount')
                     ->label('Jumlah Pembayaran')
                     ->required()
                     ->numeric()
                     ->disabled()
                     ->prefix('Rp'),
 
-                Forms\Components\Select::make('payment_')
+                Forms\Components\Select::make('payment_category')
                     ->label('Tipe Pembayaran')
                     ->options([
                         'semester' => 'Per Semester',
@@ -181,6 +181,9 @@ class PaymentResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::count();
+        // Menghitung jumlah tagihan yang belum dibayar
+        return static::getModel()::whereHas('bill', function ($query) {
+            $query->where('status', 'unpaid');
+        })->count();
     }
 }
