@@ -18,6 +18,8 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Filament\Resources\PaymentResource;
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
+
 
 class KokakosPanelProvider extends PanelProvider
 {
@@ -56,6 +58,11 @@ class KokakosPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+            ])
+            ->plugins([
+                \BezhanSalleh\FilamentShield\FilamentShieldPlugin::make()
+                   
+                
             ]);
     }
 }
