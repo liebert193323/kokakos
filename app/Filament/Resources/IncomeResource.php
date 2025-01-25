@@ -11,6 +11,8 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Form;
 use Illuminate\Support\Carbon;
+use Filament\Actions\Exports\ExportAction;
+use Filament\Actions\Exports\Enums\ExportFormat;
 
 class IncomeResource extends Resource
 {
@@ -18,27 +20,25 @@ class IncomeResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
     protected static ?string $navigationGroup = 'Keuangan';
     protected static ?string $modelLabel = 'Pendapatan';
+    protected static ?string $pluralModelLabel = 'Pendapatan';
     protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Card::make()
+                Forms\Components\Section::make()
                     ->schema([
                         Forms\Components\Select::make('tenant_id')
                             ->relationship('tenant', 'name')
-                            ->required()
-                            ->searchable(),
+                            ->disabled(),
 
                         Forms\Components\Select::make('payment_id')
                             ->relationship('payment', 'id')
-                            ->required()
-                            ->searchable(),
+                            ->disabled(),
 
                         Forms\Components\TextInput::make('amount')
-                            ->required()
-                            ->numeric()
+                            ->disabled()
                             ->prefix('Rp'),
 
                         Forms\Components\Select::make('type')
@@ -46,14 +46,14 @@ class IncomeResource extends Resource
                                 'semester' => 'Per Semester',
                                 'year' => 'Per Tahun',
                             ])
-                            ->required(),
+                            ->disabled(),
 
                         Forms\Components\DatePicker::make('date')
-                            ->required()
-                            ->default(now()),
+                            ->disabled(),
 
                         Forms\Components\Textarea::make('description')
                             ->label('Keterangan')
+                            ->disabled()
                             ->rows(3),
                     ])
                     ->columns(2),
@@ -126,26 +126,27 @@ class IncomeResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                Tables\Actions\ExportBulkAction::make()
+                    ->formats([
+                        ExportFormat::Csv,
+                        ExportFormat::Xlsx,
+                    ])
+                    ->fileName(fn () => 'pendapatan-' . date('Y-m-d'))
             ]);
+            
     }
 
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListIncomes::route('/'),
-            'create' => Pages\CreateIncome::route('/create'),
-            'edit' => Pages\EditIncome::route('/{record}/edit'),
+            'view' => Pages\ViewIncome::route('/{record}'),
             'dashboard' => Pages\IncomeDashboard::route('/dashboard'),
         ];
     }
 
-    // Method untuk mendapatkan data dashboard
     public static function getDashboardData()
     {
         $query = static::getModel()::query();
@@ -171,14 +172,13 @@ class IncomeResource extends Resource
         ];
     }
 
-    // Event listener untuk payment
     public static function createFromPayment($payment)
     {
         return static::getModel()::create([
             'tenant_id' => $payment->tenant_id,
             'payment_id' => $payment->id,
             'amount' => $payment->amount,
-            'type' => $payment->payment_type,
+            'type' => $payment->payment_category,
             'date' => $payment->payment_date,
             'description' => "Pembayaran dari tagihan #{$payment->bill_id}",
         ]);

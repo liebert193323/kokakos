@@ -12,11 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('complaints', function (Blueprint $table) {
-            $table->id();  // ID keluhan
-            $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');  // Relasi ke tenant
-            $table->text('complaint');  // Isi keluhan
-            $table->enum('status', ['pending', 'in_process', 'resolved'])->default('pending');  // Status keluhan
-            $table->timestamps();  // Timestamps (created_at, updated_at)
+            $table->id();
+        $table->unsignedBigInteger('tenant_id');
+        $table->unsignedBigInteger('complaint_manager_id')->nullable();
+        $table->text('complaint');
+        $table->enum('status', ['Pending', 'In Progress', 'Resolved'])->default('Pending');
+        $table->timestamps();
+
+        $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
+        $table->foreign('complaint_manager_id')->references('id')->on('complaint_managers')->onDelete('set null');
         });
     }
 

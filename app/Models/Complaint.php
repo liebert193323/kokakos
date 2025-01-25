@@ -2,21 +2,25 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Complaint extends Model
 {
-    use HasFactory;
+    protected $fillable = [
+        'tenant_id',
+        'complaint_manager_id',
+        'complaint',
+        'status'
+    ];
 
-    // Relasi ke penghuni (Many to One)
-    public function user()
+    public function tenant(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Tenant::class);
     }
 
-    // Kolom yang bisa diisi massal
-    protected $fillable = [
-        'user_id', 'keluhan', 'status',
-    ];
+    public function complaintManager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'complaint_manager_id');
+    }
 }

@@ -147,6 +147,7 @@ class BillResource extends Resource
                 
                 Tables\Actions\Action::make('pay')
     ->label('Bayar')
+    
     ->action(function (Bill $record) {
         try {
             if ($record->status === 'paid') {

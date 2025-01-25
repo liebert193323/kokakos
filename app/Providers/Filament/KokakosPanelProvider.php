@@ -10,7 +10,6 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -19,7 +18,6 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Filament\Resources\PaymentResource;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
-
 
 class KokakosPanelProvider extends PanelProvider
 {
@@ -43,7 +41,7 @@ class KokakosPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-               
+                // Tambahkan widget di sini jika diperlukan
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -60,9 +58,7 @@ class KokakosPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->plugins([
-                \BezhanSalleh\FilamentShield\FilamentShieldPlugin::make()
-                   
-                
+                FilamentShieldPlugin::make(),
             ]);
     }
 }

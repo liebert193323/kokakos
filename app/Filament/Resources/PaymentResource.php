@@ -4,15 +4,17 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PaymentResource\Pages;
 use App\Models\Payment;
+use Illuminate\Support\Facades\Log;
 use Filament\Forms;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
-use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
+use Filament\Forms\Components\Select;
+use Exception; // Tambahkan ini untuk menangani Exception
 
 class PaymentResource extends Resource
 {
@@ -21,43 +23,42 @@ class PaymentResource extends Resource
     protected static ?string $navigationGroup = 'Keuangan';
     protected static ?string $modelLabel = 'Pembayaran';
     protected static ?string $pluralModelLabel = 'Pembayaran';
-    
+
     public static function form(Forms\Form $form): Forms\Form
     {
-        return $form
-            ->schema([
-                Forms\Components\Select::make('tenant_id')
-                    ->relationship('tenant', 'name')
-                    ->required()
-                    ->disabled(),
+        return $form->schema([
+            Forms\Components\Select::make('tenant_id')
+                ->relationship('tenant', 'name')
+                ->required()
+                ->disabled(),
 
-                Forms\Components\Select::make('bill_id')
-                    ->relationship('bill', 'description')
-                    ->required()
-                    ->disabled(),
+            Forms\Components\Select::make('bill_id')
+                ->relationship('bill', 'description')
+                ->required()
+                ->disabled(),
 
-                Forms\Components\TextInput::make('amount')
-                    ->label('Jumlah Pembayaran')
-                    ->required()
-                    ->numeric()
-                    ->disabled()
-                    ->prefix('Rp'),
+            Forms\Components\TextInput::make('amount')
+                ->label('Jumlah Pembayaran')
+                ->required()
+                ->numeric()
+                ->disabled()
+                ->prefix('Rp'),
 
-                Forms\Components\Select::make('payment_category')
-                    ->label('Tipe Pembayaran')
-                    ->options([
-                        'semester' => 'Per Semester',
-                        'year' => 'Per Tahun',
-                    ])
-                    ->required()
-                    ->disabled(),
+            Forms\Components\Select::make('payment_category')
+                ->label('Tipe Pembayaran')
+                ->options([
+                    'semester' => 'Per Semester',
+                    'year' => 'Per Tahun',
+                ])
+                ->required()
+                ->disabled(),
 
-                Forms\Components\DateTimePicker::make('payment_date')
-                    ->label('Tanggal Pembayaran')
-                    ->required()
-                    ->default(now())
-                    ->disabled(),
-            ]);
+            Forms\Components\DateTimePicker::make('payment_date')
+                ->label('Tanggal Pembayaran')
+                ->required()
+                ->default(now())
+                ->disabled(),
+        ]);
     }
 
     public static function table(Table $table): Table
@@ -101,7 +102,7 @@ class PaymentResource extends Resource
                         'semester' => 'Per Semester',
                         'year' => 'Per Tahun',
                     ]),
-                
+
                 Filter::make('payment_date')
                     ->form([
                         Forms\Components\DatePicker::make('payment_date_from')
@@ -119,47 +120,45 @@ class PaymentResource extends Resource
                                 $data['payment_date_until'],
                                 fn (Builder $query, $date): Builder => $query->whereDate('payment_date', '<=', $date),
                             );
-                    })
+                    }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\Action::make('pay')
                     ->label('Bayar')
-                    ->action(function (Payment $record) {
+                    ->color('success')
+                    ->icon('heroicon-o-credit-card')
+                    ->action(function (array $data, Payment $record): void {
                         try {
-                            if ($record->bill) {
-                                $record->bill->update(['status' => 'paid']);
-                            }
+                            // Update status pembayaran menjadi 'paid'
+                            $record->payment_status = 'paid';
+                        // Pastikan kolom status ada
+                            $record->save();
 
+                            // Kirim notifikasi pembayaran berhasil
                             Notification::make()
                                 ->title('Pembayaran Berhasil')
+                                ->body('Pembayaran Anda telah berhasil dan status tagihan telah diperbarui.')
                                 ->success()
                                 ->send();
-
-                        } catch (\Exception $e) {
-                            Log::error('Failed to update bill status:', [
+                        } catch (Exception $e) {
+                            Log::error('Payment processing failed:', [
                                 'error' => $e->getMessage(),
                                 'payment_id' => $record->id,
-                                'bill_id' => $record->bill_id
                             ]);
 
                             Notification::make()
-                                ->title('Gagal Memproses Pembayaran')
+                                ->title('Gagal Memulai Pembayaran')
                                 ->body($e->getMessage())
                                 ->danger()
                                 ->send();
-
-                            throw $e;
                         }
                     })
-                    ->color('success')
-                    ->icon('heroicon-o-check-circle')
-                    ->requiresConfirmation()
                     ->modalHeading('Konfirmasi Pembayaran')
-                    ->modalSubheading('Apakah Anda yakin ingin memproses pembayaran ini?')
-                    ->visible(fn (Payment $record): bool => 
-                        $record->bill && 
-                        $record->bill->status === 'unpaid' && 
+                    ->modalSubmitActionLabel('Bayar Sekarang')
+                    ->visible(fn (Payment $record): bool =>
+                        $record->bill &&
+                        $record->bill->status === 'unpaid' &&
                         $record->bill->tenant_id === $record->tenant_id
                     ),
             ]);
@@ -169,7 +168,7 @@ class PaymentResource extends Resource
     {
         return [];
     }
-    
+
     public static function getPages(): array
     {
         return [
@@ -181,7 +180,6 @@ class PaymentResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        // Menghitung jumlah tagihan yang belum dibayar
         return static::getModel()::whereHas('bill', function ($query) {
             $query->where('status', 'unpaid');
         })->count();

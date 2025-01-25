@@ -12,8 +12,7 @@ class ListIncomes extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-            Actions\CreateAction::make(),
-        ];
+        // Tidak ada aksi create karena data dibuat otomatis dari pembayaran
+        return [];
     }
 }

@@ -1,8 +1,7 @@
 <?php
 
-
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\MidtransCallbackController;
 
 /*
 |--------------------------------------------------------------------------
@@ -17,6 +16,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/kokakos/login');
 
-    
-
+// Payment Gateway Routes
+Route::post('payment-callback', [MidtransCallbackController::class, 'handle'])
+    ->name('payment.callback');
 

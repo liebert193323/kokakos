@@ -1,82 +1,78 @@
 <?php
-
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\ComplaintResource\Pages;
-use App\Filament\Resources\ComplaintResource\RelationManagers;
 use App\Models\Complaint;
+use App\Filament\Resources\ComplaintResource\Pages;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ComplaintResource extends Resource
 {
     protected static ?string $model = Complaint::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-inbox';
-    protected static ?string $navigationGroup = 'Master';
+    protected static ?string $navigationGroup = 'Manajemen Pengaduan';
+    protected static ?string $pluralModelLabel = 'Pengaduan';
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('tenant_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\Textarea::make('complaint')
-                    ->required()
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('status')
-                    ->required(),
-            ]);
+        return $form->schema([
+            Forms\Components\Select::make('tenant_id')
+                ->relationship('tenant', 'name')
+                ->required()
+                ->label('Penyewa'),
+            Forms\Components\Select::make('complaint_manager_id')
+                ->relationship('complaintManager', 'name')
+                ->nullable()
+                ->label('Pengelola Pengaduan'),
+            Forms\Components\Textarea::make('complaint')
+                ->required()
+                ->columnSpanFull()
+                ->label('Isi Pengaduan'),
+            Forms\Components\Select::make('status')
+                ->options([
+                    'Pending' => 'Menunggu',
+                    'In Progress' => 'Sedang Diproses', 
+                    'Resolved' => 'Selesai'
+                ])
+                ->default('Pending')
+                ->required()
+                ->label('Status')
+        ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('tenant_id')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('status'),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                //
+                Tables\Columns\TextColumn::make('tenant.name')
+                    ->label('Penyewa'),
+                Tables\Columns\TextColumn::make('complaintManager.name')
+                    ->label('Pengelola'),
+                Tables\Columns\TextColumn::make('complaint')
+                    ->limit(50)
+                    ->label('Pengaduan'),
+                Tables\Columns\BadgeColumn::make('status')
+                    ->label('Status')
+                    ->colors([
+                        'warning' => 'Pending',
+                        'info' => 'In Progress',
+                        'success' => 'Resolved',
+                    ])
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                Tables\Actions\DeleteAction::make()
             ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\CreateComplaint::route('/'),
-            'create' => Pages\EditComplaint::route('/create'),
+            'index' => Pages\ListComplaints::route('/'),
+            'create' => Pages\CreateComplaint::route('/create'),
             'edit' => Pages\EditComplaint::route('/{record}/edit'),
         ];
     }

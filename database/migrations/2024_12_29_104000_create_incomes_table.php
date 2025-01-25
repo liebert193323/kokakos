@@ -13,9 +13,12 @@ return new class extends Migration
     {
         Schema::create('incomes', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
-            $table->foreignId('bill_id')->constrained('bills')->onDelete('cascade');
-            $table->decimal('amount', 8, 2)->default(1.00); // Default value added
+            $table->foreignId('tenant_id')->constrained();
+            $table->foreignId('payment_id')->constrained();
+            $table->decimal('amount', 12, 2);
+            $table->enum('type', ['semester', 'year']);
+            $table->dateTime('date');
+            $table->text('description')->nullable();
             $table->timestamps();
         });
     }
