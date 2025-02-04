@@ -15,7 +15,7 @@ class CreateBill extends CreateRecord
         // Buat payment record otomatis
         Payment::create([
             'tenant_id' => $this->record->tenant_id,
-            'room_id' => $this->record->room_id ?? null,
+            'room_number' => $this->record->room_id ?? null,
             'bill_id' => $this->record->id,
             'amount' => $this->record->amount,
             'payment_category' => $this->record->payment_category,

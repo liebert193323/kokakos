@@ -8,7 +8,7 @@ use Carbon\Carbon;
 class Room extends Model
 {
     protected $fillable = [
-        'tenant_id',
+        'user_id',
         'number',
         'capacity',
         'status',
@@ -27,14 +27,16 @@ class Room extends Model
     protected static function booted()
     {
         static::saving(function ($room) {
-            $room->status = $room->tenant_id ? 'occupied' : 'available';
+            $room->status = $room->user_id ? 'occupied' : 'available';
+
         });
     }
 
-    public function tenant()
+    public function user()
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
+    
 
     public function bills()
     {
@@ -46,7 +48,7 @@ class Room extends Model
         return $query->where('status', 'occupied')
             ->whereNotNull('rent_end_date')
             ->where('rent_end_date', '>', now())
-            ->whereNotNull('tenant_id');
+            ->whereNotNull('user_id');
     }
 
     public function scopeExpiredBills(Builder $query)
@@ -54,7 +56,7 @@ class Room extends Model
         return $query->where('status', 'occupied')
             ->whereNotNull('rent_end_date')
             ->where('rent_end_date', '<=', now())
-            ->whereNotNull('tenant_id');
+            ->whereNotNull('user_id');
     }
 
     public function shouldShowInBills(): bool
@@ -62,7 +64,7 @@ class Room extends Model
         return $this->status === 'occupied' 
             && $this->rent_end_date 
             && $this->rent_end_date->isFuture() 
-            && $this->tenant_id;
+            && $this->user_id;
     }
 
     public function getRemainingDays(): int

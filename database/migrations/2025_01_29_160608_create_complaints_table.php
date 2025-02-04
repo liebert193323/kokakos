@@ -13,14 +13,14 @@ return new class extends Migration
     {
         Schema::create('complaints', function (Blueprint $table) {
             $table->id();
-        $table->unsignedBigInteger('tenant_id');
-        $table->unsignedBigInteger('complaint_manager_id')->nullable();
-        $table->text('complaint');
-        $table->enum('status', ['Pending', 'In Progress', 'Resolved'])->default('Pending');
-        $table->timestamps();
-
-        $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
-        $table->foreign('complaint_manager_id')->references('id')->on('complaint_managers')->onDelete('set null');
+            $table->string('title');
+            $table->text('description');
+            $table->string('tenant_name');
+            $table->string('room_number'); // Tambah nomor kamar
+            $table->string('photo')->nullable();
+            $table->enum('status', ['pending', 'processing', 'completed'])->default('pending');
+            $table->foreignId('user_id')->nullable()->constrained();
+            $table->timestamps();
         });
     }
 

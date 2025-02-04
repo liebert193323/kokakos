@@ -14,7 +14,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\Select;
-use Exception; // Tambahkan ini untuk menangani Exception
+use Exception;
 
 class PaymentResource extends Resource
 {
@@ -27,16 +27,26 @@ class PaymentResource extends Resource
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([
-            Forms\Components\Select::make('tenant_id')
-                ->relationship('tenant', 'name')
+            Forms\Components\Select::make('user_id')
+                ->relationship('user', 'name')
+                ->label('Pengguna')
+                
                 ->required()
                 ->disabled(),
 
-            Forms\Components\Select::make('bill_id')
+            Forms\Components\TextInput::make('room_number')
+                ->label('Nomor Kamar')
+                ->default(fn($record) => $record->bill->room_number ?? '-')
+                ->disabled(),
+
+                Forms\Components\Select::make('bill_id')
                 ->relationship('bill', 'description')
                 ->required()
-                ->disabled(),
-
+                ->reactive()
+                ->afterStateUpdated(fn ($state, callable $set) => 
+                    $set('user_id', \App\Models\Bill::find($state)?->user_id ?? null)
+        ),
+            
             Forms\Components\TextInput::make('amount')
                 ->label('Jumlah Pembayaran')
                 ->required()
@@ -58,6 +68,14 @@ class PaymentResource extends Resource
                 ->required()
                 ->default(now())
                 ->disabled(),
+
+            Forms\Components\Select::make('status')
+                ->label('Status')
+                ->options([
+                    'unpaid' => 'Belum Dibayar',
+                    'paid' => 'Sudah Dibayar',
+                ])
+                ->disabled(),
         ]);
     }
 
@@ -66,8 +84,13 @@ class PaymentResource extends Resource
         return $table
             ->defaultSort('payment_date', 'desc')
             ->columns([
-                Tables\Columns\TextColumn::make('tenant.name')
-                    ->label('Penyewa')
+                Tables\Columns\TextColumn::make('user.name')
+                    ->label('Pengguna')
+                    ->sortable()
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('room_number')
+                    ->label('Nomor Kamar')
                     ->sortable()
                     ->searchable(),
 
@@ -83,7 +106,7 @@ class PaymentResource extends Resource
 
                 Tables\Columns\TextColumn::make('payment_category')
                     ->label('Tipe Pembayaran')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
                         'semester' => 'Per Semester',
                         'year' => 'Per Tahun',
                         default => $state,
@@ -94,6 +117,20 @@ class PaymentResource extends Resource
                     ->label('Tanggal Pembayaran')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Status')
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                        'unpaid' => 'Belum Dibayar',
+                        'paid' => 'Sudah Dibayar',
+                        default => $state,
+                    })
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'unpaid' => 'danger',
+                        'paid' => 'success',
+                        default => 'primary',
+                    }),
             ])
             ->filters([
                 SelectFilter::make('payment_category')
@@ -114,53 +151,81 @@ class PaymentResource extends Resource
                         return $query
                             ->when(
                                 $data['payment_date_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('payment_date', '>=', $date),
+                                fn(Builder $query, $date): Builder => $query->whereDate('payment_date', '>=', $date),
                             )
                             ->when(
                                 $data['payment_date_until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('payment_date', '<=', $date),
+                                fn(Builder $query, $date): Builder => $query->whereDate('payment_date', '<=', $date),
                             );
                     }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\Action::make('pay')
-                    ->label('Bayar')
-                    ->color('success')
-                    ->icon('heroicon-o-credit-card')
-                    ->action(function (array $data, Payment $record): void {
-                        try {
-                            // Update status pembayaran menjadi 'paid'
-                            $record->payment_status = 'paid';
-                        // Pastikan kolom status ada
-                            $record->save();
-
-                            // Kirim notifikasi pembayaran berhasil
-                            Notification::make()
-                                ->title('Pembayaran Berhasil')
-                                ->body('Pembayaran Anda telah berhasil dan status tagihan telah diperbarui.')
-                                ->success()
-                                ->send();
-                        } catch (Exception $e) {
-                            Log::error('Payment processing failed:', [
-                                'error' => $e->getMessage(),
-                                'payment_id' => $record->id,
-                            ]);
-
-                            Notification::make()
-                                ->title('Gagal Memulai Pembayaran')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
+                Tables\Actions\Action::make('bayar')
+                ->label('Bayar')
+                ->color('success')
+                ->icon('heroicon-o-credit-card')
+                ->requiresConfirmation()
+                ->modalHeading('Konfirmasi Pembayaran')
+                ->modalDescription('Apakah Anda yakin ingin memproses pembayaran ini?')
+                ->modalSubmitActionLabel('Bayar Sekarang')
+                ->action(function (Payment $record): void {
+                    try {
+                        if ($record->status === 'paid') {
+                            throw new Exception('Pembayaran ini sudah dilakukan.');
                         }
-                    })
-                    ->modalHeading('Konfirmasi Pembayaran')
-                    ->modalSubmitActionLabel('Bayar Sekarang')
-                    ->visible(fn (Payment $record): bool =>
-                        $record->bill &&
-                        $record->bill->status === 'unpaid' &&
-                        $record->bill->tenant_id === $record->tenant_id
-                    ),
+            
+                        // Update status pembayaran menjadi "Sudah Dibayar"
+                        $record->status = 'paid';
+                        $record->save();
+            
+                        // Update status tagihan juga
+                        if ($record->bill) {
+                            $record->bill->status = 'paid';
+                            $record->bill->save();
+                        }
+            
+                        // **Tambahkan logika untuk membuat entri di tabel Income**
+                        \App\Models\Income::create([
+                            'user_id' => $record->user_id ?? ($record->bill ? $record->bill->user_id : null), // Pastikan user_id tidak null
+                            'payment_id' => $record->id,
+                            'amount' => $record->amount,
+                            'type' => $record->payment_category,
+                            'date' => $record->payment_date,
+                            'description' => "Pembayaran dari tagihan #" . ($record->bill_id ?? 'Tanpa Tagihan'),
+                        ]);
+                        
+                        
+                        
+            
+                        // Clear cache jika diperlukan
+                        cache()->forget('payment_count');
+            
+                        // Kirim notifikasi ke pengguna
+                        Notification::make()
+                            ->title('Pembayaran Berhasil')
+                            ->body('Pembayaran telah berhasil dan masuk ke pendapatan.')
+                            ->success()
+                            ->send();
+            
+                    } catch (Exception $e) {
+                        Log::error('Payment processing failed:', [
+                            'error' => $e->getMessage(),
+                            'payment_id' => $record->id,
+                        ]);
+            
+                        Notification::make()
+                            ->title('Gagal Memproses Pembayaran')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                })            
+                    ->visible(
+                        fn(Payment $record): bool =>
+                        $record->status === 'unpaid' &&
+                            ($record->bill?->status === 'unpaid' || $record->bill === null)
+                    )
             ]);
     }
 
@@ -180,8 +245,6 @@ class PaymentResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::whereHas('bill', function ($query) {
-            $query->where('status', 'unpaid');
-        })->count();
+        return static::getModel()::where('status', 'unpaid')->count();
     }
 }

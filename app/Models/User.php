@@ -25,6 +25,11 @@ class User extends Authenticatable
         'address',
         'profile_photo',
         'ktp_photo',
+        'phone',
+        'per_month',
+        'price_per_semester',
+        'price_per_year',
+        
     ];
 
     /**
@@ -46,4 +51,8 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+    public function rooms()
+    {
+        return $this->hasMany(Room::class, 'user_id');
+    }
 }

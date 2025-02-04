@@ -1,10 +1,12 @@
 <?php
-
 namespace App\Filament\Widgets;
+
 
 use App\Models\Room;
 use App\Models\Tenant;
-use App\Models\Complaint;
+use App\Models\Pengaduan;
+use App\Models\Income;
+use App\Models\User;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -22,22 +24,21 @@ class StatsOverview extends BaseWidget
                 ->description("$totalRooms kamar")
                 ->url(route('filament.kokakos.resources.rooms.index')),
 
-            // Kamar Tersedia
+            // Kamar Tersedia (Tetap Satu)
             Stat::make('Kamar Tersedia', $availableRooms)
                 ->description("$totalRooms kamar")
                 ->url(route('filament.kokakos.resources.rooms.index')),
 
             // Total Penghuni
-            Stat::make('Total Penghuni', Tenant::count())
+            Stat::make('Total Penghuni', User::count())
                 ->url(route('filament.kokakos.resources.tenants.index')),
 
-            // Total Pemasukan (contoh: harga total per tahun)
-            Stat::make('Total Pemasukan', 'Rp ' . number_format(Room::sum('price_per_year'), 0, ',', '.'))
+            // Total Pemasukan dari Income, bukan Room
+            Stat::make('Total Pemasukan', 'Rp ' . number_format(Income::sum('amount'), 0, ',', '.'))
                 ->url(route('filament.kokakos.resources.incomes.index')),
 
             // Total Pengaduan
-            Stat::make('Total Pengaduan', Complaint::count())
-                ->url(route('filament.kokakos.resources.complaints.index')),
+            
         ];
     }
 }

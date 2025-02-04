@@ -13,6 +13,8 @@ use Filament\Forms\Form;
 use Illuminate\Support\Carbon;
 use Filament\Actions\Exports\ExportAction;
 use Filament\Actions\Exports\Enums\ExportFormat;
+use App\Filament\Exports\IncomeExporter;
+use Filament\Tables\Actions\ExportBulkAction;
 
 class IncomeResource extends Resource
 {
@@ -29,8 +31,12 @@ class IncomeResource extends Resource
             ->schema([
                 Forms\Components\Section::make()
                     ->schema([
-                        Forms\Components\Select::make('tenant_id')
-                            ->relationship('tenant', 'name')
+                        Forms\Components\TextInput::make('user.name')
+                            ->label('Pengguna')
+                            ->disabled(),
+
+                        Forms\Components\TextInput::make('payment.room_number')
+                            ->label('Nomor Kamar')
                             ->disabled(),
 
                         Forms\Components\Select::make('payment_id')
@@ -38,10 +44,12 @@ class IncomeResource extends Resource
                             ->disabled(),
 
                         Forms\Components\TextInput::make('amount')
+                            ->label('Jumlah')
                             ->disabled()
                             ->prefix('Rp'),
 
                         Forms\Components\Select::make('type')
+                            ->label('Tipe')
                             ->options([
                                 'semester' => 'Per Semester',
                                 'year' => 'Per Tahun',
@@ -49,6 +57,7 @@ class IncomeResource extends Resource
                             ->disabled(),
 
                         Forms\Components\DatePicker::make('date')
+                            ->label('Tanggal')
                             ->disabled(),
 
                         Forms\Components\Textarea::make('description')
@@ -64,8 +73,13 @@ class IncomeResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('tenant.name')
-                    ->label('Penyewa')
+                Tables\Columns\TextColumn::make('user.name')
+                    ->label('Pengguna')
+                    ->sortable()
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('payment.room_number')
+                    ->label('Nomor Kamar')
                     ->sortable()
                     ->searchable(),
 
@@ -81,7 +95,7 @@ class IncomeResource extends Resource
 
                 Tables\Columns\TextColumn::make('type')
                     ->label('Tipe')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
                         'semester' => 'Per Semester',
                         'year' => 'Per Tahun',
                         default => $state,
@@ -104,7 +118,7 @@ class IncomeResource extends Resource
                         'semester' => 'Per Semester',
                         'year' => 'Per Tahun',
                     ]),
-                
+
                 Tables\Filters\Filter::make('date')
                     ->form([
                         Forms\Components\DatePicker::make('from')
@@ -116,11 +130,11 @@ class IncomeResource extends Resource
                         return $query
                             ->when(
                                 $data['from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('date', '>=', $date),
+                                fn(Builder $query, $date): Builder => $query->whereDate('date', '>=', $date),
                             )
                             ->when(
                                 $data['until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('date', '<=', $date),
+                                fn(Builder $query, $date): Builder => $query->whereDate('date', '<=', $date),
                             );
                     })
             ])
@@ -128,14 +142,11 @@ class IncomeResource extends Resource
                 Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\ExportBulkAction::make()
-                    ->formats([
-                        ExportFormat::Csv,
-                        ExportFormat::Xlsx,
-                    ])
-                    ->fileName(fn () => 'pendapatan-' . date('Y-m-d'))
+                Tables\Actions\BulkActionGroup::make([
+                    ExportBulkAction::make()->exporter(IncomeExporter::class),
+                    Tables\Actions\DeleteBulkAction::make(),
+                ])
             ]);
-            
     }
 
     public static function getPages(): array
@@ -150,10 +161,10 @@ class IncomeResource extends Resource
     public static function getDashboardData()
     {
         $query = static::getModel()::query();
-        
+
         $totalIncome = $query->sum('amount');
         $lastMonthIncome = $query->whereMonth('date', Carbon::now()->month)->sum('amount');
-        
+
         $chartData = $query
             ->whereDate('date', '>=', Carbon::now()->subDays(30))
             ->orderBy('date')
@@ -175,12 +186,13 @@ class IncomeResource extends Resource
     public static function createFromPayment($payment)
     {
         return static::getModel()::create([
-            'tenant_id' => $payment->tenant_id,
+            'user_id' => $payment->user_id,
             'payment_id' => $payment->id,
             'amount' => $payment->amount,
             'type' => $payment->payment_category,
             'date' => $payment->payment_date,
             'description' => "Pembayaran dari tagihan #{$payment->bill_id}",
         ]);
+        
     }
 }

@@ -9,26 +9,46 @@ class Payment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'tenant_id',
-        'room_id',
+        'user_id',
+        'room_number', 
         'bill_id',
         'amount',
         'payment_category',
         'payment_date',
+        'status',
     ];
 
+    protected $casts = [
+        'payment_date' => 'datetime',
+    ];
+
+    // Relasi ke User
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    // Relasi ke Bill
     public function bill()
     {
-        return $this->belongsTo(Bill::class);
+        return $this->belongsTo(Bill::class, 'bill_id');
     }
 
-    public function tenant()
+    // Mendapatkan Nomor Kamar dari Bill
+    public function getRoomNumberAttribute()
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->bill ? $this->bill->room_number : null;
     }
 
-    public function room()
+    // Pastikan user_id diambil dari bill jika kosong
+    protected static function boot()
     {
-        return $this->belongsTo(Room::class);
-    }
+        parent::boot();
+
+        static::creating(function ($payment) {
+            if (!$payment->user_id && $payment->bill) {
+                $payment->user_id = $payment->bill->user_id;
+            }
+        }); // ✅ Tambahkan tanda kurung kurawal & titik koma yang hilang
+    } // ✅ Tambahkan penutup method boot()
 }
