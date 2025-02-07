@@ -3,10 +3,10 @@
 namespace App\Policies;
 
 use App\Models\User;
-use App\Models\ComplaintManager;
+use App\Models\ComplaintResponse;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class ComplaintManagerPolicy
+class ComplaintResponsePolicy
 {
     use HandlesAuthorization;
 
@@ -15,15 +15,15 @@ class ComplaintManagerPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_complaint::manager');
+        return $user->can('view_any_complaint::handler');
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, ComplaintManager $complaintManager): bool
+    public function view(User $user, ComplaintResponse $complaintResponse): bool
     {
-        return $user->can('view_complaint::manager');
+        return $user->can('view_complaint::handler');
     }
 
     /**
@@ -31,23 +31,23 @@ class ComplaintManagerPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_complaint::manager');
+        return $user->can('create_complaint::handler');
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, ComplaintManager $complaintManager): bool
+    public function update(User $user, ComplaintResponse $complaintResponse): bool
     {
-        return $user->can('update_complaint::manager');
+        return $user->can('update_complaint::handler');
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, ComplaintManager $complaintManager): bool
+    public function delete(User $user, ComplaintResponse $complaintResponse): bool
     {
-        return $user->can('delete_complaint::manager');
+        return $user->can('delete_complaint::handler');
     }
 
     /**
@@ -55,15 +55,15 @@ class ComplaintManagerPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_complaint::manager');
+        return $user->can('delete_any_complaint::handler');
     }
 
     /**
      * Determine whether the user can permanently delete.
      */
-    public function forceDelete(User $user, ComplaintManager $complaintManager): bool
+    public function forceDelete(User $user, ComplaintResponse $complaintResponse): bool
     {
-        return $user->can('force_delete_complaint::manager');
+        return $user->can('force_delete_complaint::handler');
     }
 
     /**
@@ -71,15 +71,15 @@ class ComplaintManagerPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_complaint::manager');
+        return $user->can('force_delete_any_complaint::handler');
     }
 
     /**
      * Determine whether the user can restore.
      */
-    public function restore(User $user, ComplaintManager $complaintManager): bool
+    public function restore(User $user, ComplaintResponse $complaintResponse): bool
     {
-        return $user->can('restore_complaint::manager');
+        return $user->can('restore_complaint::handler');
     }
 
     /**
@@ -87,15 +87,15 @@ class ComplaintManagerPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_complaint::manager');
+        return $user->can('restore_any_complaint::handler');
     }
 
     /**
      * Determine whether the user can replicate.
      */
-    public function replicate(User $user, ComplaintManager $complaintManager): bool
+    public function replicate(User $user, ComplaintResponse $complaintResponse): bool
     {
-        return $user->can('replicate_complaint::manager');
+        return $user->can('replicate_complaint::handler');
     }
 
     /**
@@ -103,6 +103,6 @@ class ComplaintManagerPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_complaint::manager');
+        return $user->can('reorder_complaint::handler');
     }
 }

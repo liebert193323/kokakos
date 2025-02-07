@@ -10,9 +10,8 @@ class Bill extends Model
     use HasFactory;
 
     protected $fillable = [
-        
-        'user_id',  // Ganti tenant_id jadi user_id
-        'room_number', // Tambah field untuk nomor kamar
+        'user_id', 
+        'room_number', 
         'description',
         'amount',
         'status',
@@ -28,41 +27,35 @@ class Bill extends Model
         parent::boot();
 
         static::creating(function ($bill) {
-            if (empty($bill->amount)) {
-                $user = User::find($bill->user_id);
-                if ($user) {
-                    // Set amount berdasarkan kategori pembayaran user
-                    $bill->amount = $user->per_month ? 
-                        $user->price_per_semester : 
-                        $user->price_per_year;
-                    $bill->payment_category = $user->per_month ? 'semester' : 'year';
+            if (empty($bill->amount) && $bill->user) {
+                $bill->amount = $bill->user->per_month 
+                    ? $bill->user->price_per_semester 
+                    : $bill->user->price_per_year;
 
-                    // Ambil dan set nomor kamar
-                    $room = Room::where('user_id', $user->id)->first();
-                    if ($room) {
-                        $bill->room_number = $room->number;
-                    }
+                $bill->payment_category = $bill->user->per_month ? 'semester' : 'year';
+
+                if ($bill->user->rooms->isNotEmpty()) {
+                    $bill->room_number = $bill->user->rooms->first()->number;
                 }
             }
         });
     }
 
-    // Relasi ke User (bukan ke Tenant)
+    // Relasi ke User
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    // Tambahan relasi ke Room jika diperlukan
+    // Relasi ke Room
     public function room()
     {
         return $this->belongsTo(Room::class, 'room_number', 'number');
-        return $this->room ? $this->room->number : null;
     }
 
+    // Relasi ke Payment
     public function payments()
-{
-    return $this->hasMany(Payment::class, 'bill_id'); // Pastikan 'bill_id' sesuai dengan foreign key di tabel payments
-}
-    
+    {
+        return $this->hasMany(Payment::class, 'bill_id');
+    }
 }

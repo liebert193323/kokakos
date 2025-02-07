@@ -12,6 +12,7 @@ class ComplaintResponse extends Model
         'response',
         'status',
         'handler_id',
+        'responded_at'
     ];
 
     public function complaint(): BelongsTo

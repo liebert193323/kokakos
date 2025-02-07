@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Notifications\Notification;
+use illuminate\Support\Facades\Auth;
 
 class BillResource extends Resource
 {
@@ -20,6 +21,7 @@ class BillResource extends Resource
     protected static ?string $pluralLabel = 'Tagihan';
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationGroup = 'Keuangan';
+
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -91,6 +93,11 @@ class BillResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(function ($query) {
+                if (Auth::user()->hasRole('Penghuni')) {
+                    $query->where('user_id', Auth::id());
+                }
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Penyewa')

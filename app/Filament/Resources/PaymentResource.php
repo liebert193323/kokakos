@@ -15,6 +15,7 @@ use Filament\Tables\Filters\Filter;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\Select;
 use Exception;
+use illuminate\Support\Facades\Auth;
 
 class PaymentResource extends Resource
 {
@@ -83,6 +84,9 @@ class PaymentResource extends Resource
     {
         return $table
             ->defaultSort('payment_date', 'desc')
+            ->modifyQueryUsing(function ($query) {
+                return $query->where('user_id', Auth::id());
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Pengguna')
@@ -243,8 +247,5 @@ class PaymentResource extends Resource
         ];
     }
 
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::where('status', 'unpaid')->count();
-    }
+
 }

@@ -3,6 +3,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use illuminate\Support\Facades\Auth;
 
 class Complaint extends Model
 {
@@ -15,6 +16,15 @@ class Complaint extends Model
         'status',
         'user_id',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($complaint) {
+            // Mengatur author_id berdasarkan ID pengguna yang sedang login
+            $complaint->user_id = Auth::id();
+        });
+    }
 
     public function user(): BelongsTo
     {

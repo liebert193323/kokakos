@@ -15,7 +15,7 @@ class ComplaintPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_complaint::handler');
+        return $user->can('view_any_complaint');
     }
 
     /**
@@ -23,7 +23,7 @@ class ComplaintPolicy
      */
     public function view(User $user, Complaint $complaint): bool
     {
-        return $user->can('view_complaint::handler');
+        return $user->can('view_complaint');
     }
 
     /**
@@ -31,7 +31,7 @@ class ComplaintPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_complaint::handler');
+        return $user->can('create_complaint');
     }
 
     /**
@@ -39,7 +39,7 @@ class ComplaintPolicy
      */
     public function update(User $user, Complaint $complaint): bool
     {
-        return $user->can('update_complaint::handler');
+        return $user->can('update_complaint');
     }
 
     /**
@@ -47,7 +47,7 @@ class ComplaintPolicy
      */
     public function delete(User $user, Complaint $complaint): bool
     {
-        return $user->can('delete_complaint::handler');
+        return $user->can('delete_complaint');
     }
 
     /**
@@ -55,7 +55,7 @@ class ComplaintPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_complaint::handler');
+        return $user->can('delete_any_complaint');
     }
 
     /**
@@ -63,7 +63,7 @@ class ComplaintPolicy
      */
     public function forceDelete(User $user, Complaint $complaint): bool
     {
-        return $user->can('force_delete_complaint::handler');
+        return $user->can('force_delete_complaint');
     }
 
     /**
@@ -71,7 +71,7 @@ class ComplaintPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_complaint::handler');
+        return $user->can('force_delete_any_complaint');
     }
 
     /**
@@ -79,7 +79,7 @@ class ComplaintPolicy
      */
     public function restore(User $user, Complaint $complaint): bool
     {
-        return $user->can('restore_complaint::handler');
+        return $user->can('restore_complaint');
     }
 
     /**
@@ -87,7 +87,7 @@ class ComplaintPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_complaint::handler');
+        return $user->can('restore_any_complaint');
     }
 
     /**
@@ -95,7 +95,7 @@ class ComplaintPolicy
      */
     public function replicate(User $user, Complaint $complaint): bool
     {
-        return $user->can('replicate_complaint::handler');
+        return $user->can('replicate_complaint');
     }
 
     /**
@@ -103,6 +103,6 @@ class ComplaintPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_complaint::handler');
+        return $user->can('reorder_complaint');
     }
 }

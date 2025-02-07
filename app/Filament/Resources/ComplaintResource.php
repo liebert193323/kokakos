@@ -9,14 +9,15 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use illuminate\Support\Facades\Auth;
 
 class ComplaintResource extends Resource
 {
     protected static ?string $model = Complaint::class;
     protected static ?string $navigationIcon = 'heroicon-o-exclamation-circle';
-    protected static ?string $navigationLabel = 'Pengaduan';
-    protected static ?string $modelLabel = 'Pengaduan';
     protected static ?string $pluralModelLabel = 'Pengaduan';
+    protected static ?string $navigationGroup = 'pengaduan penghuni';
+    protected static ?string $modelLabel = 'Pengaduan';
 
     public static function form(Form $form): Form
     {
@@ -49,6 +50,11 @@ class ComplaintResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(function ($query) {
+                if (Auth::user()->hasRole('penghuni')) {
+                    $query->where('user_id', Auth::id());
+                }
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('title')
                     ->label('Judul')
@@ -79,33 +85,10 @@ class ComplaintResource extends Resource
                     ->dateTime()
                     ->sortable(),
             ])
+            ->defaultSort('created_at', 'desc')  // Newest first
             ->actions([
-                // View action - always visible
                 Tables\Actions\ViewAction::make()
                     ->label('Lihat'),
-
-                // Process action - only visible for pending complaints
-                
-                    
-                
-
-                // Complete action - only visible for processing complaints
-                Tables\Actions\Action::make('complete')
-                    ->label('Selesai')
-                    ->icon('heroicon-o-check')
-                    ->color('success')
-                    ->visible(fn (Complaint $record): bool => $record->status === 'processing')
-                    ->requiresConfirmation()
-                    ->modalHeading('Selesaikan Pengaduan')
-                    ->modalDescription('Apakah Anda yakin ingin menyelesaikan pengaduan ini?')
-                    ->modalSubmitActionLabel('Ya, Selesaikan')
-                    ->modalCancelActionLabel('Batal')
-                    ->action(function (Complaint $record) {
-                        $record->update([
-                            'status' => 'completed',
-                            'completed_at' => now(),
-                        ]);
-                    }),
             ]);
     }
 
@@ -114,7 +97,14 @@ class ComplaintResource extends Resource
         return [
             'index' => Pages\ListComplaints::route('/'),
             'create' => Pages\CreateComplaint::route('/create'),
-            'edit' => Pages\EditComplaint::route('/{record}/edit'),
+            'view' => Pages\ViewComplaint::route('/{record}'),
         ];
+    }
+
+    // Auto-set status to pending when creating new complaint
+    public static function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['status'] = 'pending';
+        return $data;
     }
 }
